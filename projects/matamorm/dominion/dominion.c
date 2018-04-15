@@ -643,31 +643,13 @@ int getCost(int cardNumber)
   return -1;
 }
 
-int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState *state, int handPos, int *bonus)
-{
-  int i;
-  int j;
-  int k;
-  int x;
-  int index;
-  int currentPlayer = whoseTurn(state);
-  int nextPlayer = currentPlayer + 1;
+int adventurerCardEffect(int currentPlayer, struct gameState *state, int temphand[]){
+      int drawntreasure = 0;
+      int cardDrawn;
+      int z = 0;      
 
-  int tributeRevealedCards[2] = {-1, -1};
-  int temphand[MAX_HAND];// moved above the if statement
-  int drawntreasure=0;
-  int cardDrawn;
-  int z = 0;// this is the counter for the temp hand
-  if (nextPlayer > (state->numPlayers - 1)){
-    nextPlayer = 0;
-  }
-  
-	
-  //uses switch to select card and perform actions
-  switch( card ) 
-    {
-    case adventurer:
-      while(drawntreasure<2){
+      //BUG: Allows the the drawing of 3 Treasure cards, as opposed to 2 Treasure cards
+      while(drawntreasure==2){
 	if (state->deckCount[currentPlayer] <1){//if the deck is empty we need to shuffle discard and add to deck
 	  shuffle(currentPlayer, state);
 	}
@@ -685,8 +667,98 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
 	state->discard[currentPlayer][state->discardCount[currentPlayer]++]=temphand[z-1]; // discard all cards in play that have been drawn
 	z=z-1;
       }
+
       return 0;
+}
+
+int smithyCardEffect(int currentPlayer, struct gameState *state, int handPos){
+      int i;
+  	//+3 Cards
+	//BUG: Allows the drawing of 2 cards, as opposed to 3 cards
+      for (i = 0; i < 2; i++)
+	{
+	  drawCard(currentPlayer, state);
+	}
 			
+      //discard card from hand
+      discardCard(handPos, currentPlayer, state, 0);
+
+      return 0;
+}
+
+int villageCardEffect(int currentPlayer, struct gameState *state, int handPos){
+      //+1 Card
+      drawCard(currentPlayer, state);
+			
+      //+2 Actions
+      //BUG: Grants only 1 extra Action, as opposed to 2 actions
+      state->numActions = state->numActions + 1;
+			
+      //discard played card from hand
+      discardCard(handPos, currentPlayer, state, 0);
+
+      return 0;
+}
+
+int great_hallCardEffect(int currentPlayer, struct gameState *state, int handPos){
+      //+1 Card
+      drawCard(currentPlayer, state);
+			
+      //+1 Actions
+      //BUG: Does not grant an extra Action during player turn
+      //state->numActions++;
+			
+      //discard card from hand
+      discardCard(handPos, currentPlayer, state, 0);
+
+      return 0;
+}
+
+int embargoCardEffect(int currentPlayer, struct gameState *state, int handPos, int choice1){
+      //+2 Coins
+      state->coins = state->coins + 2;
+			
+      //see if selected pile is in play
+      if ( state->supplyCount[choice1] == -1 )
+	{
+	  return -1;
+	}
+			
+      //add embargo token to selected supply pile
+      state->embargoTokens[choice1]++;
+			
+      //trash card
+      discardCard(handPos, currentPlayer, state, 1);
+
+      return 0;
+}      
+
+int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState *state, int handPos, int *bonus)
+{
+  int i;
+  int j;
+  int k;
+  int x;
+  int index;
+  int currentPlayer = whoseTurn(state);
+  int nextPlayer = currentPlayer + 1;
+
+  int tributeRevealedCards[2] = {-1, -1};
+  int temphand[MAX_HAND];// moved above the if statement
+  //int drawntreasure=0;
+  //int cardDrawn;
+  //int z = 0;// this is the counter for the temp hand
+  if (nextPlayer > (state->numPlayers - 1)){
+    nextPlayer = 0;
+  }
+  
+	
+  //uses switch to select card and perform actions
+  switch( card ) 
+    {
+    case adventurer:
+      return adventurerCardEffect(currentPlayer, state, temphand);
+     
     case council_room:
       //+4 Cards
       for (i = 0; i < 4; i++)
@@ -829,26 +901,10 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
       return 0;
 		
     case smithy:
-      //+3 Cards
-      for (i = 0; i < 3; i++)
-	{
-	  drawCard(currentPlayer, state);
-	}
-			
-      //discard card from hand
-      discardCard(handPos, currentPlayer, state, 0);
-      return 0;
-		
+      return smithyCardEffect(currentPlayer, state, handPos);
+      		
     case village:
-      //+1 Card
-      drawCard(currentPlayer, state);
-			
-      //+2 Actions
-      state->numActions = state->numActions + 2;
-			
-      //discard played card from hand
-      discardCard(handPos, currentPlayer, state, 0);
-      return 0;
+      return villageCardEffect(currentPlayer, state, handPos);
 		
     case baron:
       state->numBuys++;//Increase buys by 1!
@@ -902,15 +958,7 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
       return 0;
 		
     case great_hall:
-      //+1 Card
-      drawCard(currentPlayer, state);
-			
-      //+1 Actions
-      state->numActions++;
-			
-      //discard card from hand
-      discardCard(handPos, currentPlayer, state, 0);
-      return 0;
+      return great_hallCardEffect(currentPlayer, state, handPos);
 		
     case minion:
       //+1 action
@@ -1139,21 +1187,7 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
 
 		
     case embargo: 
-      //+2 Coins
-      state->coins = state->coins + 2;
-			
-      //see if selected pile is in play
-      if ( state->supplyCount[choice1] == -1 )
-	{
-	  return -1;
-	}
-			
-      //add embargo token to selected supply pile
-      state->embargoTokens[choice1]++;
-			
-      //trash card
-      discardCard(handPos, currentPlayer, state, 1);		
-      return 0;
+      return embargoCardEffect(currentPlayer, state, handPos, choice1);	
 		
     case outpost:
       //set outpost flag
