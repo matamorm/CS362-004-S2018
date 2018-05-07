@@ -34,7 +34,7 @@ char *inputString()
 	str[i] = asciiValue;
     }
 
-    //include 'new line' for testing
+    //include 'null-terminator' for testing
     str[strSize - 1] = '\0';
 
     return str;
